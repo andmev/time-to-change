@@ -342,23 +342,26 @@
       }
     }
 
-    function getTemperatureClass(temperature, minTemperature, mode) {
-      // Use minimum temperature for tire decisions (more accurate)
-      // Tire performance changes at extreme temperatures, not averages
-      const tempToCheck = minTemperature !== undefined ? minTemperature : temperature;
+    // Get visual color class based on average temperature (for display)
+    function getTemperatureClass(temperature, mode) {
+      // Temperature thresholds work the same way for both modes:
+      // - Cold (≤7°C) is RED: need winter tires (winter mode) or too cold for summer tires (summer mode)
+      // - Moderate (7-10°C) is YELLOW: transition zone
+      // - Warm (≥10°C) is GREEN: safe without winter tires (winter mode) or safe for summer tires (summer mode)
 
+      if (temperature <= 7) return 'temp-red';
+      if (temperature < 10) return 'temp-yellow';  // Yellow: 7°C < temp < 10°C
+      return 'temp-green';  // Green: temp >= 10°C
+    }
+
+    // Check if day requires tire change based on minimum temperature (more accurate)
+    function shouldChangeTires(minTemperature, mode) {
       if (mode === 'winter') {
-        // Winter mode: cold minimum temps indicate need for winter tires
-        // Below 7°C is the standard threshold for winter tire performance
-        if (tempToCheck <= 7) return 'temp-red';
-        if (tempToCheck <= 10) return 'temp-yellow';
-        return 'temp-green';
+        // If minimum temp drops to/below 7°C, winter tires recommended
+        return minTemperature <= 7;
       } else {
-        // Summer mode: warm minimum temps indicate safe for summer tires
-        // Above 7°C minimum means consistently warm
-        if (tempToCheck > 10) return 'temp-red';
-        if (tempToCheck > 7) return 'temp-yellow';
-        return 'temp-green';
+        // If minimum temp stays above 7°C, summer tires safe
+        return minTemperature > 7;
       }
     }
 
@@ -519,8 +522,8 @@
       let maxConsecutive = 0;
 
       forecast.forEach(day => {
-        const tempClass = getTemperatureClass(day.temperature, day.minTemperature, mode);
-        if (tempClass === 'temp-red') {
+        // Use minimum temperature for tire change decision (more accurate)
+        if (shouldChangeTires(day.minTemperature, mode)) {
           consecutiveRed++;
           maxConsecutive = Math.max(maxConsecutive, consecutiveRed);
         } else {
@@ -576,8 +579,9 @@
         dayRow.appendChild(dayCell);
 
         // Add temperature with colored indicator
+        // Visual color based on average temp (user-friendly)
         const tempCell = document.createElement('td');
-        const tempClass = getTemperatureClass(day.temperature, day.minTemperature, seasonMode);
+        const tempClass = getTemperatureClass(day.temperature, seasonMode);
         tempCell.className = tempClass;
 
         const tempValue = document.createElement('span');
@@ -591,12 +595,12 @@
         tempRange.style.marginTop = '5px';
         tempRange.textContent = `↓${day.minTemperature}° ↑${day.maxTemperature}°`;
 
-        // Choose emoji based on minimum temperature (more accurate for tire decisions)
+        // Choose emoji based on average temperature (matches visual color indicator)
         const weatherIcon = document.createElement('span');
         weatherIcon.className = 'tire-icon';
-        if (day.minTemperature <= 7) {
+        if (day.temperature <= 7) {
           weatherIcon.textContent = '🥶';
-        } else if (day.minTemperature > 10) {
+        } else if (day.temperature > 10) {
           weatherIcon.textContent = '😎';
         } else {
           weatherIcon.textContent = '🤔';
