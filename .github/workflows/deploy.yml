@@ -25,6 +25,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
+      - name: Inject API Configuration
+        env:
+          WEATHERAPI_KEY: ${{ secrets.WEATHERAPI_API_KEY }}
+        run: |
+          # Create config.js with obfuscated API key
+          # Using base64 encoding for basic obfuscation (not true encryption, but hides from casual inspection)
+          if [ -n "$WEATHERAPI_KEY" ]; then
+            ENCODED_KEY=$(echo -n "$WEATHERAPI_KEY" | base64)
+            cat > public/config.js << EOF
+          // Auto-generated configuration - DO NOT EDIT MANUALLY
+          (function() {
+            window.APP_CONFIG = {
+              weatherApiKey: '$ENCODED_KEY',
+              apiVersion: '2.0'
+            };
+          })();
+          EOF
+            echo "✓ API configuration injected"
+          else
+            # Create empty config for testing without API key
+            cat > public/config.js << EOF
+          // Auto-generated configuration - DO NOT EDIT MANUALLY
+          (function() {
+            window.APP_CONFIG = {
+              weatherApiKey: null,
+              apiVersion: '2.0'
+            };
+          })();
+          EOF
+            echo "⚠ No API key found - creating empty config"
+          fi
+      
       - name: Setup Pages
         uses: actions/configure-pages@v4
       

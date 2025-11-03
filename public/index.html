@@ -254,6 +254,8 @@
       color: #c62828;
     }
   </style>
+  <!-- Load API configuration (generated during deployment) -->
+  <script src="config.js"></script>
 </head>
 
 <body>
@@ -354,19 +356,122 @@
       }
     }
 
-    function processWeatherData(hourlyData) {
+    // Decode base64 API key
+    function getApiKey() {
+      if (!window.APP_CONFIG || !window.APP_CONFIG.weatherApiKey) {
+        return null;
+      }
+      try {
+        return atob(window.APP_CONFIG.weatherApiKey);
+      } catch (e) {
+        console.error('Failed to decode API key');
+        return null;
+      }
+    }
+
+    // Fetch from Open-Meteo API
+    async function fetchOpenMeteo(lat, lon) {
+      try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&timezone=auto&forecast_days=7`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error('Open-Meteo API failed');
+        }
+
+        const data = await response.json();
+
+        if (data.hourly) {
+          return {
+            success: true,
+            data: data.hourly,
+            source: 'Open-Meteo'
+          };
+        }
+        return { success: false, source: 'Open-Meteo' };
+      } catch (error) {
+        console.error('Open-Meteo error:', error);
+        return { success: false, source: 'Open-Meteo', error: error.message };
+      }
+    }
+
+    // Fetch from WeatherAPI.com
+    async function fetchWeatherAPI(lat, lon) {
+      const apiKey = getApiKey();
+
+      if (!apiKey) {
+        console.info('WeatherAPI.com key not configured (optional)');
+        return {
+          success: false,
+          source: 'WeatherAPI.com',
+          error: 'API key not configured'
+        };
+      }
+
+      try {
+        const url = `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${lat},${lon}&days=7&aqi=no&alerts=no`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error('WeatherAPI.com failed');
+        }
+
+        const data = await response.json();
+
+        if (data.forecast) {
+          return {
+            success: true,
+            data: data.forecast.forecastday,
+            source: 'WeatherAPI.com'
+          };
+        }
+        return { success: false, source: 'WeatherAPI.com' };
+      } catch (error) {
+        console.error('WeatherAPI.com error:', error);
+        return { success: false, source: 'WeatherAPI.com', error: error.message };
+      }
+    }
+
+    // Aggregate data from multiple APIs
+    function aggregateWeatherData(apiResults) {
       const dailyTemps = {};
 
-      // Group temperatures by day
-      hourlyData.time.forEach((timestamp, index) => {
-        const date = new Date(timestamp);
-        const dayKey = date.toISOString().split('T')[0];
+      // Process Open-Meteo data (hourly)
+      if (apiResults.openMeteo && apiResults.openMeteo.success && apiResults.openMeteo.data) {
+        const { time, temperature_2m } = apiResults.openMeteo.data;
+        time.forEach((timestamp, index) => {
+          const date = new Date(timestamp);
+          const dayKey = date.toISOString().split('T')[0];
 
-        if (!dailyTemps[dayKey]) {
-          dailyTemps[dayKey] = [];
-        }
-        dailyTemps[dayKey].push(hourlyData.temperature_2m[index]);
-      });
+          if (!dailyTemps[dayKey]) {
+            dailyTemps[dayKey] = [];
+          }
+          dailyTemps[dayKey].push(temperature_2m[index]);
+        });
+      }
+
+      // Process WeatherAPI.com data
+      if (apiResults.weatherAPI && apiResults.weatherAPI.success && apiResults.weatherAPI.data) {
+        apiResults.weatherAPI.data.forEach((day) => {
+          const dayKey = day.date;
+
+          if (!dailyTemps[dayKey]) {
+            dailyTemps[dayKey] = [];
+          }
+
+          // Add hourly data if available
+          if (day.hour) {
+            day.hour.forEach((hour) => {
+              dailyTemps[dayKey].push(hour.temp_c);
+            });
+          }
+
+          // Also add daily average as a data point
+          if (day.day && day.day.avgtemp_c !== undefined) {
+            dailyTemps[dayKey].push(day.day.avgtemp_c);
+          }
+        });
+      }
 
       // Calculate average temperature for each day
       const forecast = [];
@@ -389,10 +494,11 @@
       });
 
       return {
-        success: true,
+        success: forecast.length > 0,
         forecast: forecast,
         sources: {
-          'Open-Meteo': true
+          'Open-Meteo': apiResults.openMeteo?.success || false,
+          'WeatherAPI.com': apiResults.weatherAPI?.success || false
         }
       };
     }
@@ -529,25 +635,36 @@
 
             showStatus(`🌡️ Analyzing temperatures for tire recommendations...`, 'loading');
 
-            // Call Open-Meteo API directly (works on GitHub Pages)
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m&timezone=auto&forecast_days=7`;
-            const response = await fetch(url);
+            // Fetch from both APIs in parallel
+            const [openMeteoResult, weatherAPIResult] = await Promise.all([
+              fetchOpenMeteo(latitude, longitude),
+              fetchWeatherAPI(latitude, longitude)
+            ]);
 
-            if (!response.ok) {
-              throw new Error('Failed to fetch weather data');
+            const apiResults = {
+              openMeteo: openMeteoResult,
+              weatherAPI: weatherAPIResult
+            };
+
+            // Log API status
+            console.log('API Results:', {
+              'Open-Meteo': openMeteoResult.success ? 'Success ✓' : 'Failed ✗',
+              'WeatherAPI.com': weatherAPIResult.success ? 'Success ✓' : 'Failed ✗'
+            });
+
+            // Check if at least one API succeeded
+            const hasData = openMeteoResult.success || weatherAPIResult.success;
+
+            if (!hasData) {
+              throw new Error('Unable to fetch weather data from any source');
             }
 
-            const rawData = await response.json();
-
-            if (!rawData.hourly) {
-              throw new Error('No weather data received');
-            }
-
-            // Process the data to match expected format
-            const data = processWeatherData(rawData.hourly);
+            // Aggregate data from all sources
+            const data = aggregateWeatherData(apiResults);
 
             if (data.success && data.forecast.length > 0) {
-              showStatus(`✅ Forecast loaded! (${data.forecast.length} days analyzed)`, 'success');
+              const apiCount = Object.values(data.sources).filter(Boolean).length;
+              showStatus(`✅ Forecast loaded from ${apiCount} source(s)! (${data.forecast.length} days analyzed)`, 'success');
               displayWeatherData(data);
             } else {
               throw new Error('No weather data received');

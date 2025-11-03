@@ -1,25 +1,20 @@
 {
   "name": "time-to-change",
-  "version": "1.0.0",
-  "description": "Weather forecast application with location-based temperature aggregation",
-  "main": "server.js",
+  "version": "2.0.0",
+  "description": "Static weather forecast application for tire change recommendations - Deployed on GitHub Pages",
   "scripts": {
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "npx http-server public -p 8080",
+    "test": "echo \"No tests specified\" && exit 0",
     "deploy": "echo \"Deployment is handled automatically by GitHub Actions. Push to main branch to deploy.\""
   },
   "keywords": [
     "weather",
     "forecast",
-    "temperature"
+    "temperature",
+    "github-pages",
+    "static-site"
   ],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "axios": "^1.6.0"
-  }
+  "devDependencies": {}
 }

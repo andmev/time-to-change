@@ -5,6 +5,9 @@ node_modules/
 .env
 .env.local
 
+# Auto-generated config (will be created during deployment)
+# public/config.js is tracked for local testing but gets overwritten in CI/CD
+
 # Logs
 logs
 *.log
@@ -26,3 +29,6 @@ Thumbs.db
 # Temporary files
 *.tmp
 .cache/
+
+# Lock files (optional - uncomment if needed)
+# package-lock.json
