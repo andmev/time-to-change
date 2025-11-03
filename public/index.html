@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tire Change Forecast</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      transition: background 0.5s ease;
+    }
+
+    body.summer-mode {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 900px;
+      width: 100%;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 2em;
+    }
+
+    .season-badge {
+      text-align: center;
+      margin-bottom: 20px;
+      padding: 8px 16px;
+      background: #e3f2fd;
+      color: #1976d2;
+      border-radius: 20px;
+      display: inline-block;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .season-badge.summer {
+      background: #fff3e0;
+      color: #ef6c00;
+    }
+
+    .season-container {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .button-container {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 16px;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s, background 0.5s;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    body.summer-mode button {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status {
+      text-align: center;
+      margin: 20px 0;
+      padding: 15px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+
+    .status.loading {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+
+    .status.error {
+      background: #ffebee;
+      color: #c62828;
+    }
+
+    .status.success {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .tire-warning {
+      text-align: center;
+      margin: 20px 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+      color: white;
+      border-radius: 15px;
+      font-size: 20px;
+      font-weight: 700;
+      box-shadow: 0 4px 15px rgba(238, 90, 111, 0.4);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.02);
+      }
+    }
+
+    .table-container {
+      overflow-x: auto;
+      margin-top: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      padding: 20px;
+      text-align: center;
+      border: 1px solid #e0e0e0;
+      position: relative;
+    }
+
+    th {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-weight: 600;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: background 0.5s;
+    }
+
+    body.summer-mode th {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    }
+
+    td {
+      background: #fafafa;
+      font-size: 24px;
+      font-weight: 700;
+      color: #333;
+      border-bottom: 4px solid transparent;
+    }
+
+    td.temp-green {
+      border-bottom-color: #4caf50;
+    }
+
+    td.temp-yellow {
+      border-bottom-color: #ffc107;
+    }
+
+    td.temp-red {
+      border-bottom-color: #f44336;
+    }
+
+    td .temp-value::after {
+      content: '°C';
+      font-size: 16px;
+      font-weight: 400;
+      color: #666;
+      margin-left: 4px;
+    }
+
+    td .tire-icon {
+      display: block;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .weather-info {
+      text-align: center;
+      margin-top: 20px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .sources {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-top: 15px;
+    }
+
+    .source {
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .source.active {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .source.inactive {
+      background: #ffebee;
+      color: #c62828;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1 id="pageTitle">🚗 Tire Change Forecast</h1>
+
+    <div class="season-container">
+      <span id="seasonBadge" class="season-badge hidden"></span>
+    </div>
+
+    <div class="button-container">
+      <button id="getWeatherBtn" onclick="getWeather()">
+        🛞 Check Tire Change Forecast
+      </button>
+    </div>
+
+    <div id="status" class="hidden"></div>
+
+    <div id="tireWarning" class="tire-warning hidden"></div>
+
+    <div id="tableContainer" class="table-container hidden">
+      <table id="weatherTable">
+        <thead>
+          <tr id="dayRow">
+            <!-- Day names will be inserted here -->
+          </tr>
+        </thead>
+        <tbody>
+          <tr id="tempRow">
+            <!-- Temperatures will be inserted here -->
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="weather-info">
+        <div id="sourcesInfo" class="sources"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentLatitude = null;
+    let seasonMode = 'winter'; // 'winter' or 'summer'
+
+    function getSeasonMode(latitude) {
+      const currentMonth = new Date().getMonth(); // 0-11
+      const isNorthernHemisphere = latitude >= 0;
+
+      // Determine if we're approaching winter or summer
+      // Northern Hemisphere: Sept(8)-Feb(1) = winter mode, Mar(2)-Aug(7) = summer mode
+      // Southern Hemisphere: Mar(2)-Aug(7) = winter mode, Sept(8)-Feb(1) = summer mode
+
+      let isWinterApproaching;
+
+      if (isNorthernHemisphere) {
+        // Northern: Oct(9), Nov(10), Dec(11), Jan(0), Feb(1), Mar(2) = winter approaching
+        isWinterApproaching = currentMonth >= 9 || currentMonth <= 2;
+      } else {
+        // Southern: Apr(3), May(4), Jun(5), Jul(6), Aug(7), Sep(8) = winter approaching
+        isWinterApproaching = currentMonth >= 3 && currentMonth <= 8;
+      }
+
+      return isWinterApproaching ? 'winter' : 'summer';
+    }
+
+    function updateSeasonalUI(mode) {
+      seasonMode = mode;
+      const body = document.body;
+      const seasonBadge = document.getElementById('seasonBadge');
+      const pageTitle = document.getElementById('pageTitle');
+
+      if (mode === 'summer') {
+        body.classList.add('summer-mode');
+        seasonBadge.textContent = '☀️ Summer Mode - Hot Weather Advisory';
+        seasonBadge.classList.add('summer');
+        seasonBadge.classList.remove('hidden');
+        pageTitle.textContent = '☀️ Tire Change Forecast';
+      } else {
+        body.classList.remove('summer-mode');
+        seasonBadge.textContent = '❄️ Winter Mode - Cold Weather Advisory';
+        seasonBadge.classList.remove('summer');
+        seasonBadge.classList.remove('hidden');
+        pageTitle.textContent = '❄️ Tire Change Forecast';
+      }
+    }
+
+    function getTemperatureClass(temperature, mode) {
+      if (mode === 'winter') {
+        // Winter mode: cold is bad (red)
+        if (temperature <= 8) return 'temp-red';
+        if (temperature <= 10) return 'temp-yellow';
+        return 'temp-green';
+      } else {
+        // Summer mode: hot is bad (red)
+        if (temperature > 10) return 'temp-red';
+        if (temperature > 8) return 'temp-yellow';
+        return 'temp-green';
+      }
+    }
+
+    function processWeatherData(hourlyData) {
+      const dailyTemps = {};
+
+      // Group temperatures by day
+      hourlyData.time.forEach((timestamp, index) => {
+        const date = new Date(timestamp);
+        const dayKey = date.toISOString().split('T')[0];
+
+        if (!dailyTemps[dayKey]) {
+          dailyTemps[dayKey] = [];
+        }
+        dailyTemps[dayKey].push(hourlyData.temperature_2m[index]);
+      });
+
+      // Calculate average temperature for each day
+      const forecast = [];
+      const sortedDays = Object.keys(dailyTemps).sort();
+
+      sortedDays.forEach((dayKey) => {
+        const temps = dailyTemps[dayKey];
+        if (temps.length > 0) {
+          const avgTemp = temps.reduce((sum, temp) => sum + temp, 0) / temps.length;
+          const date = new Date(dayKey);
+          const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+
+          forecast.push({
+            date: dayKey,
+            dayName: dayName,
+            temperature: Math.round(avgTemp * 10) / 10, // Round to 1 decimal
+            dataPoints: temps.length
+          });
+        }
+      });
+
+      return {
+        success: true,
+        forecast: forecast,
+        sources: {
+          'Open-Meteo': true
+        }
+      };
+    }
+
+    function checkConsecutiveRedDays(forecast, mode) {
+      let consecutiveRed = 0;
+      let maxConsecutive = 0;
+
+      forecast.forEach(day => {
+        const tempClass = getTemperatureClass(day.temperature, mode);
+        if (tempClass === 'temp-red') {
+          consecutiveRed++;
+          maxConsecutive = Math.max(maxConsecutive, consecutiveRed);
+        } else {
+          consecutiveRed = 0;
+        }
+      });
+
+      return maxConsecutive;
+    }
+
+    function showStatus(message, type) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.textContent = message;
+      statusDiv.className = `status ${type}`;
+      statusDiv.classList.remove('hidden');
+    }
+
+    function hideStatus() {
+      const statusDiv = document.getElementById('status');
+      statusDiv.classList.add('hidden');
+    }
+
+    function displayWeatherData(data) {
+      const dayRow = document.getElementById('dayRow');
+      const tempRow = document.getElementById('tempRow');
+      const tableContainer = document.getElementById('tableContainer');
+      const sourcesInfo = document.getElementById('sourcesInfo');
+      const tireWarning = document.getElementById('tireWarning');
+
+      // Clear existing data
+      dayRow.innerHTML = '';
+      tempRow.innerHTML = '';
+      sourcesInfo.innerHTML = '';
+      tireWarning.classList.add('hidden');
+
+      // Check for consecutive red days
+      const consecutiveRedDays = checkConsecutiveRedDays(data.forecast, seasonMode);
+
+      if (consecutiveRedDays >= 3) {
+        if (seasonMode === 'winter') {
+          tireWarning.innerHTML = '⚠️ Time to Change to Winter Tires! 🛞❄️';
+        } else {
+          tireWarning.innerHTML = '⚠️ Time to Change to Summer Tires! 🛞☀️';
+        }
+        tireWarning.classList.remove('hidden');
+      }
+
+      // Populate table
+      data.forecast.forEach(day => {
+        // Add day name
+        const dayCell = document.createElement('th');
+        dayCell.textContent = day.dayName;
+        dayRow.appendChild(dayCell);
+
+        // Add temperature with colored indicator
+        const tempCell = document.createElement('td');
+        const tempClass = getTemperatureClass(day.temperature, seasonMode);
+        tempCell.className = tempClass;
+
+        const tempValue = document.createElement('span');
+        tempValue.className = 'temp-value';
+        tempValue.textContent = day.temperature;
+
+        // Choose emoji based on temperature
+        const weatherIcon = document.createElement('span');
+        weatherIcon.className = 'tire-icon';
+        if (day.temperature <= 8) {
+          weatherIcon.textContent = '🥶';
+        } else if (day.temperature > 10) {
+          weatherIcon.textContent = '😎';
+        } else {
+          weatherIcon.textContent = '🤔';
+        }
+
+        tempCell.appendChild(tempValue);
+        tempCell.appendChild(weatherIcon);
+        tempRow.appendChild(tempCell);
+      });
+
+      // Display sources
+      if (data.sources) {
+        Object.entries(data.sources).forEach(([source, isActive]) => {
+          const sourceDiv = document.createElement('div');
+          sourceDiv.className = `source ${isActive ? 'active' : 'inactive'}`;
+          sourceDiv.textContent = `${source}: ${isActive ? '✓' : '✗'}`;
+          sourcesInfo.appendChild(sourceDiv);
+        });
+      }
+
+      // Show table
+      tableContainer.classList.remove('hidden');
+    }
+
+    async function getWeather() {
+      const button = document.getElementById('getWeatherBtn');
+      const tableContainer = document.getElementById('tableContainer');
+      const tireWarning = document.getElementById('tireWarning');
+
+      // Hide previous results
+      tableContainer.classList.add('hidden');
+      tireWarning.classList.add('hidden');
+
+      // Check if geolocation is supported
+      if (!navigator.geolocation) {
+        showStatus('Geolocation is not supported by your browser', 'error');
+        return;
+      }
+
+      // Disable button and show loading
+      button.disabled = true;
+      showStatus('🌍 Requesting location permission...', 'loading');
+
+      // Request location
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            currentLatitude = latitude;
+
+            // Determine season mode
+            const mode = getSeasonMode(latitude);
+            updateSeasonalUI(mode);
+
+            showStatus(`🌡️ Analyzing temperatures for tire recommendations...`, 'loading');
+
+            // Call Open-Meteo API directly (works on GitHub Pages)
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m&timezone=auto&forecast_days=7`;
+            const response = await fetch(url);
+
+            if (!response.ok) {
+              throw new Error('Failed to fetch weather data');
+            }
+
+            const rawData = await response.json();
+
+            if (!rawData.hourly) {
+              throw new Error('No weather data received');
+            }
+
+            // Process the data to match expected format
+            const data = processWeatherData(rawData.hourly);
+
+            if (data.success && data.forecast.length > 0) {
+              showStatus(`✅ Forecast loaded! (${data.forecast.length} days analyzed)`, 'success');
+              displayWeatherData(data);
+            } else {
+              throw new Error('No weather data received');
+            }
+
+          } catch (error) {
+            console.error('Error:', error);
+            showStatus(`❌ Error: ${error.message}`, 'error');
+          } finally {
+            button.disabled = false;
+          }
+        },
+        (error) => {
+          button.disabled = false;
+
+          let errorMessage = 'Unable to retrieve your location';
+
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = '🚫 Location permission denied. Please allow location access to check tire forecast.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = '📍 Location information is unavailable.';
+              break;
+            case error.TIMEOUT:
+              errorMessage = '⏱️ Location request timed out.';
+              break;
+          }
+
+          showStatus(errorMessage, 'error');
+        }
+      );
+    }
+  </script>
+</body>
+
+</html>
