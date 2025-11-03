@@ -18,9 +18,8 @@ A smart tire change advisory application that analyzes weather data from your lo
 ## 🌐 Live Demo
 
 This app is designed to be deployed on GitHub Pages. Once deployed, it will be accessible at:
-```
-https://YOUR_USERNAME.github.io/YOUR_REPO_NAME/
-```
+
+https://andmev.github.io/time-to-change/
 
 ## 📡 Weather Data Sources
 
@@ -158,10 +157,6 @@ time-to-change/
 ├── package.json                 # Project metadata (no dependencies needed)
 ├── .gitignore                   # Git ignore rules
 ├── README.md                    # This file
-├── DEPLOYMENT.md                # Deployment guide
-├── DEPLOYMENT_CHECKLIST.md      # Step-by-step deployment checklist
-├── GITHUB_PAGES_SETUP.md        # Quick setup guide
-├── GITHUB_SECRETS_SETUP.md      # API key configuration guide
 └── env.example                  # API key template (legacy)
 ```
 
@@ -184,10 +179,6 @@ The application gracefully handles:
 
 ## 📚 Documentation
 
-- **[Quick Setup](GITHUB_PAGES_SETUP.md)** - 3-step deployment guide
-- **[Deployment Guide](DEPLOYMENT.md)** - Comprehensive deployment instructions
-- **[Secrets Setup](GITHUB_SECRETS_SETUP.md)** - API key configuration
-- **[Deployment Checklist](DEPLOYMENT_CHECKLIST.md)** - Step-by-step verification
 - **[Configuration Summary](.github/CONFIGURATION_SUMMARY.md)** - Technical details
 
 ## 🤝 Contributing
@@ -198,11 +189,6 @@ This is a static site project. To contribute:
 2. Make your changes
 3. Test locally: `npm run dev`
 4. Submit a pull request
-
-## 📝 Version History
-
-- **v2.0** - Fully static GitHub Pages version with secure API keys
-- **v1.0** - Original Node.js backend version
 
 ## License
 

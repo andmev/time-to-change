@@ -1,6 +1,6 @@
 {
   "name": "time-to-change",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "description": "Static weather forecast application for tire change recommendations - Deployed on GitHub Pages",
   "scripts": {
     "dev": "npx http-server public -p 8080",
@@ -14,7 +14,7 @@
     "github-pages",
     "static-site"
   ],
-  "author": "",
+  "author": "Andrii Medvediev <a.medvedev@me.com>",
   "license": "ISC",
   "devDependencies": {}
 }

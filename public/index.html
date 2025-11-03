@@ -342,16 +342,22 @@
       }
     }
 
-    function getTemperatureClass(temperature, mode) {
+    function getTemperatureClass(temperature, minTemperature, mode) {
+      // Use minimum temperature for tire decisions (more accurate)
+      // Tire performance changes at extreme temperatures, not averages
+      const tempToCheck = minTemperature !== undefined ? minTemperature : temperature;
+
       if (mode === 'winter') {
-        // Winter mode: cold is bad (red)
-        if (temperature <= 8) return 'temp-red';
-        if (temperature <= 10) return 'temp-yellow';
+        // Winter mode: cold minimum temps indicate need for winter tires
+        // Below 7°C is the standard threshold for winter tire performance
+        if (tempToCheck <= 7) return 'temp-red';
+        if (tempToCheck <= 10) return 'temp-yellow';
         return 'temp-green';
       } else {
-        // Summer mode: hot is bad (red)
-        if (temperature > 10) return 'temp-red';
-        if (temperature > 8) return 'temp-yellow';
+        // Summer mode: warm minimum temps indicate safe for summer tires
+        // Above 7°C minimum means consistently warm
+        if (tempToCheck > 10) return 'temp-red';
+        if (tempToCheck > 7) return 'temp-yellow';
         return 'temp-green';
       }
     }
@@ -466,21 +472,24 @@
             });
           }
 
-          // Also add daily average as a data point
-          if (day.day && day.day.avgtemp_c !== undefined) {
-            dailyTemps[dayKey].push(day.day.avgtemp_c);
-          }
+          // Note: We intentionally do NOT add the pre-calculated daily average
+          // to avoid double-counting bias. We calculate our own average from hourly data.
         });
       }
 
-      // Calculate average temperature for each day
+      // Calculate average and minimum temperature for each day
       const forecast = [];
       const sortedDays = Object.keys(dailyTemps).sort();
 
       sortedDays.forEach((dayKey) => {
         const temps = dailyTemps[dayKey];
-        if (temps.length > 0) {
+
+        // Data quality check: require at least 12 hourly readings for accuracy
+        // (50% coverage of the day minimum)
+        if (temps.length >= 12) {
           const avgTemp = temps.reduce((sum, temp) => sum + temp, 0) / temps.length;
+          const minTemp = Math.min(...temps);
+          const maxTemp = Math.max(...temps);
           const date = new Date(dayKey);
           const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
 
@@ -488,6 +497,8 @@
             date: dayKey,
             dayName: dayName,
             temperature: Math.round(avgTemp * 10) / 10, // Round to 1 decimal
+            minTemperature: Math.round(minTemp * 10) / 10,
+            maxTemperature: Math.round(maxTemp * 10) / 10,
             dataPoints: temps.length
           });
         }
@@ -508,7 +519,7 @@
       let maxConsecutive = 0;
 
       forecast.forEach(day => {
-        const tempClass = getTemperatureClass(day.temperature, mode);
+        const tempClass = getTemperatureClass(day.temperature, day.minTemperature, mode);
         if (tempClass === 'temp-red') {
           consecutiveRed++;
           maxConsecutive = Math.max(maxConsecutive, consecutiveRed);
@@ -566,25 +577,33 @@
 
         // Add temperature with colored indicator
         const tempCell = document.createElement('td');
-        const tempClass = getTemperatureClass(day.temperature, seasonMode);
+        const tempClass = getTemperatureClass(day.temperature, day.minTemperature, seasonMode);
         tempCell.className = tempClass;
 
         const tempValue = document.createElement('span');
         tempValue.className = 'temp-value';
         tempValue.textContent = day.temperature;
 
-        // Choose emoji based on temperature
+        // Add min/max temperature info
+        const tempRange = document.createElement('div');
+        tempRange.style.fontSize = '12px';
+        tempRange.style.color = '#666';
+        tempRange.style.marginTop = '5px';
+        tempRange.textContent = `↓${day.minTemperature}° ↑${day.maxTemperature}°`;
+
+        // Choose emoji based on minimum temperature (more accurate for tire decisions)
         const weatherIcon = document.createElement('span');
         weatherIcon.className = 'tire-icon';
-        if (day.temperature <= 8) {
+        if (day.minTemperature <= 7) {
           weatherIcon.textContent = '🥶';
-        } else if (day.temperature > 10) {
+        } else if (day.minTemperature > 10) {
           weatherIcon.textContent = '😎';
         } else {
           weatherIcon.textContent = '🤔';
         }
 
         tempCell.appendChild(tempValue);
+        tempCell.appendChild(tempRange);
         tempCell.appendChild(weatherIcon);
         tempRow.appendChild(tempCell);
       });
